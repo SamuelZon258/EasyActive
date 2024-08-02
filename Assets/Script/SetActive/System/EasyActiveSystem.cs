@@ -9,6 +9,7 @@
 
 using Unity.Collections;
 using Unity.Entities;
+using Unity.VisualScripting;
 
 namespace Script.Dots.Extensions.SetActive
 {
@@ -18,10 +19,10 @@ namespace Script.Dots.Extensions.SetActive
         [ReadOnly] public ComponentLookup<EasyEntityData> EasyEntityDataLookUp;
         [ReadOnly] public ComponentLookup<DisableActive> DisableActiveLookUp;
         public EntityCommandBuffer.ParallelWriter ECB;
+        public bool IsEditor;
 
         void Execute([EntityIndexInQuery] int entityInQueryIndex, Entity entity,
             DynamicBuffer<LinkedEntityGroup> group) {
-         
             var enable = EasyEntityDataLookUp.GetEnabledRefRO<EasyEntityData>(entity).ValueRO;
             if (enable) {
                 if (DisabledLookUp.HasComponent(entity)) {
@@ -45,6 +46,11 @@ namespace Script.Dots.Extensions.SetActive
                         }
                     }
                 }
+            }
+
+            if (!IsEditor) {
+                //非编辑器则只在初始化时影响一次,后续销毁不影响实体
+                ECB.RemoveComponent<EasyEntityData>(entityInQueryIndex, entity);
             }
         }
     }
@@ -78,11 +84,16 @@ namespace Script.Dots.Extensions.SetActive
             disabledLookUp.Update(this);
             easyEntityDataLookUp.Update(this);
             disableActiveLookUp.Update(this);
+            var isEditor = false;
+#if UNITY_EDITOR
+            isEditor = true;
+#endif
             foreach (var entityQuery in _query) {
                 if (entityQuery.CalculateEntityCount() > 0) {
                     var job = new EasyActiveJob
                     {
                         ECB = _ecbSystem.CreateCommandBuffer().AsParallelWriter(),
+                        IsEditor = isEditor,
                         DisabledLookUp = disabledLookUp,
                         EasyEntityDataLookUp = easyEntityDataLookUp,
                         DisableActiveLookUp = disableActiveLookUp,
