@@ -55,6 +55,7 @@ namespace Script.Dots.Extensions.SetActive
                 .ScheduleParallel(Dependency);
             Dependency.Complete();
             ecbSystem.Playback(EntityManager);
+            ecbSystem.Dispose();
         }
     }
 }
